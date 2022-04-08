@@ -50,7 +50,7 @@ export default function Home() {
         >
           <ProfileRelationsBoxWrapper>
             <h2 className='smallTitle'>
-              Pessoas Comunidades ({pessoasFavoritas.length}){' '}
+              Pessoas Comunidades ({pessoasFavoritas.length})
             </h2>
 
             <ul>
