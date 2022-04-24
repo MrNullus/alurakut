@@ -1,38 +1,15 @@
 import React from 'react';
+import { useState, useEffect } from 'react';
 import MainGrid from '../src/Components/MainGrid';
 import Box from '../src/Components/Box';
 import { ProfileRelationsBoxWrapper } from '../src/Components/ProfileRelations';
-import { AlurakutMenu, AlurakutProfileSidebarMenuDefault, OrkutNostalgicIconSet } from '../src/lib/AluraCommos';
+import ProfileSidebar from '../src/Components/ProfileSidebar/';
+import { AlurakutMenu, OrkutNostalgicIconSet } from '../src/lib/AluraCommos';
+import ProfileRelationsBox from '../src/Components/ProfileRelationsBox/';
 
-
-function ProfileSidebar(props) {
-  return (
-    <Box as="aside">
-      <img
-        style={{ borderRadius: '8px' }}
-        src={`https://github.com/${props.githubUser}.png`}
-        alt=''
-      />
-      <hr />
-
-      <p>
-        <a className='boxLink' href={`https://github.com/${props.githubUser}`}>
-          @{props.githubUser}
-        </a>
-      </p>
-      <hr />
-
-      <AlurakutProfileSidebarMenuDefault />
-    </Box>
-  )
-}
 
 export default function Home() {
-  const [ comunidades, setComunidades ] = React.useState([{
-    id: new Date().toISOString(),
-    title: "Eu odeio acordar cedo",
-    image: "https://alurakut.vercel.app/capa-comunidade-01.jpg"
-  }]);
+  const [ communities, setCommunities ] = useState([]);
 
   const githubUser = 'dev-gustavo-henrique';
   // const comunidade = [
@@ -44,6 +21,54 @@ export default function Home() {
     'rafaballerini', 'omariosouto', 
     'peas', 'marcobrunodev'
   ];
+
+  // 0 - Pegar o array com os dados do GitHub
+  const [ followers, setFollowers ] = useState([]);
+  useEffect(function() {
+    // ! API GitHub
+    fetch("https://api.github.com/users/dev-gustavo-henrique/followers")
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(response){
+      console.log(response);
+      setFollowers(response);  
+    });
+
+    // ! API GraphQL
+    fetch(
+      'https://graphql.datocms.com/', 
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': '680bca3cf81faa0e5b65aa7b6f1a42',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({"query": `
+          query {
+            allCommunities {
+              id,
+              title,
+              imageUrl,
+              creatorSlug
+            }
+          }
+        `})
+      }
+    )
+    .then((response) => response.json())
+    .then((response) => {
+      const communitiesFromDato = response.data.allCommunities;
+      console.log(communitiesFromDato);
+
+      setCommunities(communitiesFromDato);
+    });
+
+  }, []);
+
+  // 1 - Criar um box que vai ter um map, baseado nos items do array que pegamos do GitHub
+
 
   return (
     <>
@@ -68,20 +93,33 @@ export default function Home() {
 
             <form onSubmit={function handleCriaComunidade(e) {
               e.preventDefault();
-              // console.log(dadosDoForm.get("title"));
-              // console.log(dadosDoForm.get("image"));
-              if (comunidades.length <= 5) {
-                const dadosDoForm = new FormData(e.target);
+              
+              const dataFromForm = new FormData(e.target);
 
-                const comunidade = {
-                  title: dadosDoForm.get('title'),
-                  image: dadosDoForm.get('image')
-                };
-                
-                const comunidadesAtualizadas = [...comunidades, comunidade];
-                setComunidades(comunidadesAtualizadas);
+              const community = {
+                title: dataFromForm.get('title'),
+                dateOfCreation: new Date().toISOString(),
+                imageUrl: dataFromForm.get('image'),
+                creatorSlug: githubUser,
+              };
 
-              }
+              fetch(
+                '/api/communities',
+                {
+                  method: 'POST',
+                  headers: {
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify(community),
+                }
+              )
+              .then(async (response) => {
+                const data = await response.json();
+                const community = data.createdRecord;
+                // console.log(data.createdRecord);
+                const updatedCommunities = [...communities, community];
+                setCommunities(updatedCommunities);
+              });
 
             }}>
               <div>
@@ -115,18 +153,21 @@ export default function Home() {
           className='profileRelationsArea'
           style={{ gridArea: 'profileRelationsArea' }}
         >
+
+          <ProfileRelationsBox title="Followers" relations={followers} />
+  
           <ProfileRelationsBoxWrapper>
             <h2 className='smallTitle'>
-              Comunidades ({comunidades.length})
+              Comunidades ({communities.length})
             </h2>
 
             <ul>
-              {comunidades.map((itemAtual) => {
+              {communities.slice(0,6).map((item) => {
                 return (
-                  <li key={itemAtual.id}>
-                    <a href={`/comunitys/${itemAtual.title}`}>
-                      <img src={itemAtual.image} />
-                      <span>{itemAtual.title}</span>
+                  <li key={item.id}>
+                    <a href={`/communities/${item.id}`}>
+                      <img src={item.imageUrl} />
+                      <span>{item.title}</span>
                     </a>
                   </li>
                 )
@@ -136,21 +177,19 @@ export default function Home() {
 
           <ProfileRelationsBoxWrapper>
             <h2 className='smallTitle'>
-              Pessoas Comunidades ({pessoasFavoritas.length})
+              Pessoas Favoritas da Comunidade({pessoasFavoritas.length})
             </h2>
 
             <ul>
-              {pessoasFavoritas.map((itemAtual) => {
-                for (let i = 0; i < 5; i++) {
-                  return (
-                    <li key={itemAtual}>
-                      <a href={`/users/${itemAtual}`}>
-                        <img src={`https://github.com/${itemAtual}.png`} />
-                        <span>{itemAtual}</span>
-                      </a>
-                    </li>
-                  )
-                }
+            {pessoasFavoritas.slice(0,6).map((item) => {
+                return (
+                  <li key={item}>
+                    <a href={`/users/${item}`}>
+                      <img src={`https://github.com/${item}.png`} />
+                      <span>{item}</span>
+                    </a>
+                  </li>
+                )
               })}
             </ul>
           </ProfileRelationsBoxWrapper>
