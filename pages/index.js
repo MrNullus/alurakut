@@ -1,5 +1,13 @@
+//** Importações do React */
 import React from 'react';
 import { useState, useEffect } from 'react';
+
+//** Lib para implementar Cookies com Next */
+import nookies from 'nookies';
+//** lib para implementar JWT */
+import jwt from "jsonwebtoken";
+
+//** Components */
 import MainGrid from '../src/Components/MainGrid';
 import Box from '../src/Components/Box';
 import { ProfileRelationsBoxWrapper } from '../src/Components/ProfileRelations';
@@ -8,10 +16,10 @@ import { AlurakutMenu, OrkutNostalgicIconSet } from '../src/lib/AluraCommos';
 import ProfileRelationsBox from '../src/Components/ProfileRelationsBox/';
 
 
-export default function Home() {
+export default function Home(props) {
   const [ communities, setCommunities ] = useState([]);
 
-  const githubUser = 'dev-gustavo-henrique';
+  const githubUser = props.githubUser;
   // const comunidade = [
   //   'Alurakut', 'DevPorHobbie', 
   //   'MochileirosDoCodepen', 'DevSincero'
@@ -197,4 +205,32 @@ export default function Home() {
       </MainGrid>
     </>
   )
+}
+
+
+export async function getServerSideProps(context) {
+  const cookies = nookies.get(context);
+  const token = cookies.USER_TOKEN;
+  const { isAuthenticated } = await fetch('https://alurakut.vercel.app/api/auth', {
+    headers: {
+        Authorization: token
+      }
+  })
+  .then((response) => response.json())
+
+  if(!isAuthenticated) {
+    return {
+      redirect: {
+        destination: '/login',
+        permanent: false,
+      }
+    }
+  }
+
+  const { githubUser } = jwt.decode(token);
+  return {
+    props: {
+      githubUser
+    }, //* will be passed to the page component as props
+  }
 }
